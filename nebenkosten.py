@@ -174,7 +174,7 @@ st.radio(
 
 # Dynamische Eingabefelder Heizung (Auch leer)
 if st.session_state.heiz_periods == "1 Zeitraum (Nicht aufgeteilt)":
-    st.number_input("Heizkosten (€)", key="h1", min_value=0.0, step=0.01, format="%.2f", value=None, placeholder="0.00")
+    st.number_input("Heizkosten (€)", key="h1", min_value=0.0, step=0.01, format="%.2f", value=None, placeholder="0,00")
 elif st.session_state.heiz_periods == "2 Zeiträume":
     hc1, hc2 = st.columns(2)
     with hc1: st.number_input("Heizkosten erster Zeitraum (€)", key="h1", min_value=0.0, step=0.01, format="%.2f", value=None, placeholder="0,00")
