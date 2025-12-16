@@ -1,6 +1,9 @@
 import streamlit as st
 from datetime import date, timedelta, datetime
 
+# --- WICHTIG: Dies muss der ERSTE Streamlit-Befehl sein ---
+st.set_page_config(page_title="Nebenkostenrechner 2024", layout="centered")
+
 # --- Konfiguration ---
 YEAR = 2024
 DAYS_IN_YEAR = 366
@@ -35,7 +38,7 @@ def calculate_stats(start, end):
         current += timedelta(days=1)
     return total_days, total_hgz
 
-# --- State & History Management (Nur im Speicher) ---
+# --- State & History Management ---
 def init_state():
     defaults = {
         "m1_start": date(2024, 1, 1), "m1_end": date(2024, 6, 30),
@@ -47,7 +50,7 @@ def init_state():
         "h1": None, "h2": None, "h3": None,
         "match_periods": "Nein",
         "calc_triggered": False,
-        "history_list": [] # Verlauf wird jetzt hier gespeichert, nicht in Datei
+        "history_list": [] 
     }
     for key, val in defaults.items():
         if key not in st.session_state:
@@ -59,9 +62,8 @@ def save_to_history(data_dict):
         "meta_timestamp": timestamp,
         "data": data_dict
     }
-    # Vorne anfügen
+    # Nur im Speicher behalten (RAM)
     st.session_state.history_list.insert(0, entry)
-    # Begrenzen auf 20
     st.session_state.history_list = st.session_state.history_list[:20]
 
 def restore_from_history(entry_data):
@@ -85,11 +87,10 @@ def restore_from_history(entry_data):
     except Exception as e:
         st.error(f"Fehler beim Laden: {e}")
 
-# Initialisierung
+# Initialisierung aufrufen (NACH set_page_config)
 init_state()
 
 # --- UI Aufbau ---
-st.set_page_config(page_title="Nebenkostenrechner 2024", layout="centered")
 st.title("💰 Nebenkostenrechner (2024)")
 
 # --- 1. MIETERDATEN ---
@@ -176,7 +177,6 @@ st.radio(
 # --- BERECHNUNGS-LOGIK ---
 
 def perform_calculation():
-    # Wir speichern die Daten jetzt direkt im Session State (RAM), nicht als Datei
     save_data = {
         "m1_start": st.session_state.m1_start,
         "m1_end": st.session_state.m1_end,
@@ -260,10 +260,9 @@ st.markdown("### Verwaltung")
 col_reset, col_space = st.columns([1, 2])
 with col_reset:
     if st.button("🔄 Neue Berechnung (Reset)"):
-        # Reset löscht nur die Eingaben, behält aber den Verlauf
         save_hist = st.session_state.history_list
         st.session_state.clear()
-        st.session_state.history_list = save_hist # Verlauf wiederherstellen
+        st.session_state.history_list = save_hist 
         st.rerun()
 
 with st.expander("📂 Letzte Berechnungen anzeigen (Aktuelle Sitzung)"):
