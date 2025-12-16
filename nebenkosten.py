@@ -149,11 +149,11 @@ st.markdown("---")
 # value=None sorgt dafür, dass das Feld leer ist. 
 c_grund, c_umlage = st.columns(2)
 with c_grund:
-    st.number_input("Grundsteuer (€)", key="grundsteuer", min_value=0.0, step=0.01, format="%.2f", value=None, placeholder="0.00")
+    st.number_input("Grundsteuer (€)", key="grundsteuer", min_value=0.0, step=0.01, format="%.2f", value=None, placeholder="0,00")
 with c_umlage:
-    st.number_input("Umlagefähige Kosten (€)", key="umlage", min_value=0.0, step=0.01, format="%.2f", value=None, placeholder="0.00")
+    st.number_input("Umlagefähige Kosten (€)", key="umlage", min_value=0.0, step=0.01, format="%.2f", value=None, placeholder="0,00")
 
-st.markdown("#### Heizkosten Konfiguration")
+st.markdown("#### Heizkosten")
 
 st.radio(
     "Sind die Heizkosten in den oben eingegebenen 'Umlagefähigen Kosten' enthalten?",
@@ -177,13 +177,13 @@ if st.session_state.heiz_periods == "1 Zeitraum (Nicht aufgeteilt)":
     st.number_input("Heizkosten (€)", key="h1", min_value=0.0, step=0.01, format="%.2f", value=None, placeholder="0.00")
 elif st.session_state.heiz_periods == "2 Zeiträume":
     hc1, hc2 = st.columns(2)
-    with hc1: st.number_input("Heizkosten erster Zeitraum (€)", key="h1", min_value=0.0, step=0.01, format="%.2f", value=None, placeholder="0.00")
-    with hc2: st.number_input("Heizkosten zweiter Zeitraum (€)", key="h2", min_value=0.0, step=0.01, format="%.2f", value=None, placeholder="0.00")
+    with hc1: st.number_input("Heizkosten erster Zeitraum (€)", key="h1", min_value=0.0, step=0.01, format="%.2f", value=None, placeholder="0,00")
+    with hc2: st.number_input("Heizkosten zweiter Zeitraum (€)", key="h2", min_value=0.0, step=0.01, format="%.2f", value=None, placeholder="0,00")
 else:
     hc1, hc2, hc3 = st.columns(3)
-    with hc1: st.number_input("Heizkosten erster Zeitraum (€)", key="h1", min_value=0.0, step=0.01, format="%.2f", value=None, placeholder="0.00")
-    with hc2: st.number_input("Heizkosten zweiter Zeitraum (€)", key="h2", min_value=0.0, step=0.01, format="%.2f", value=None, placeholder="0.00")
-    with hc3: st.number_input("Heizkosten dritter Zeitraum (€)", key="h3", min_value=0.0, step=0.01, format="%.2f", value=None, placeholder="0.00")
+    with hc1: st.number_input("Heizkosten erster Zeitraum (€)", key="h1", min_value=0.0, step=0.01, format="%.2f", value=None, placeholder="0,00")
+    with hc2: st.number_input("Heizkosten zweiter Zeitraum (€)", key="h2", min_value=0.0, step=0.01, format="%.2f", value=None, placeholder="0,00")
+    with hc3: st.number_input("Heizkosten dritter Zeitraum (€)", key="h3", min_value=0.0, step=0.01, format="%.2f", value=None, placeholder="0,00")
 
 # Summenberechnung (Wir müssen None als 0.0 behandeln für die Mathe)
 val_h1 = st.session_state.h1 if st.session_state.h1 is not None else 0.0
@@ -290,7 +290,6 @@ if st.session_state.calc_triggered:
 
 # --- VERWALTUNG ---
 st.markdown("---")
-st.markdown("### Verwaltung")
 
 col_reset, col_space = st.columns([1, 2])
 with col_reset:
