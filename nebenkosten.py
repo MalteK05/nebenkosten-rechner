@@ -1,12 +1,9 @@
 import streamlit as st
 from datetime import date, timedelta, datetime
-import json
-import os
 
 # --- Konfiguration ---
 YEAR = 2024
 DAYS_IN_YEAR = 366
-HISTORY_FILE = "verlauf.json"
 
 # HGZ Tabelle
 HGZ_MAP = {
@@ -38,83 +35,55 @@ def calculate_stats(start, end):
         current += timedelta(days=1)
     return total_days, total_hgz
 
-# --- Speicher-Funktionen ---
-def load_history():
-    if not os.path.exists(HISTORY_FILE):
-        return []
-    try:
-        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except:
-        return []
-
-def save_to_history(data_dict):
-    history = load_history()
-    timestamp = datetime.now().strftime("%d.%m.%Y | %H:%M Uhr")
-    entry = {
-        "meta_timestamp": timestamp,
-        "data": data_dict
-    }
-    history.insert(0, entry)
-    history = history[:20] 
-    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-        json.dump(history, f, indent=4, default=str)
-
-# --- State Management ---
+# --- State & History Management (Nur im Speicher) ---
 def init_state():
-    # Wir nutzen None für leere Zahlenfelder
     defaults = {
         "m1_start": date(2024, 1, 1), "m1_end": date(2024, 6, 30),
         "has_m2": False,
         "m2_start": date(2024, 7, 1), "m2_end": date(2024, 12, 31),
-        "grundsteuer": None, "umlage": None, # None = Leer
+        "grundsteuer": None, "umlage": None,
         "heiz_in_umlage": "Nein",
         "heiz_periods": "1 Zeitraum (Nicht aufgeteilt)",
-        "h1": None, "h2": None, "h3": None, # None = Leer
+        "h1": None, "h2": None, "h3": None,
         "match_periods": "Nein",
-        "calc_triggered": False
+        "calc_triggered": False,
+        "history_list": [] # Verlauf wird jetzt hier gespeichert, nicht in Datei
     }
     for key, val in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = val
 
+def save_to_history(data_dict):
+    timestamp = datetime.now().strftime("%d.%m.%Y | %H:%M Uhr")
+    entry = {
+        "meta_timestamp": timestamp,
+        "data": data_dict
+    }
+    # Vorne anfügen
+    st.session_state.history_list.insert(0, entry)
+    # Begrenzen auf 20
+    st.session_state.history_list = st.session_state.history_list[:20]
+
 def restore_from_history(entry_data):
     try:
-        # Datumsfelder sicher parsen (String -> Date Object)
-        st.session_state.m1_start = datetime.strptime(entry_data["m1_start"], "%Y-%m-%d").date()
-        st.session_state.m1_end = datetime.strptime(entry_data["m1_end"], "%Y-%m-%d").date()
-        
+        st.session_state.m1_start = entry_data["m1_start"]
+        st.session_state.m1_end = entry_data["m1_end"]
         st.session_state.has_m2 = entry_data["has_m2"]
+        st.session_state.m2_start = entry_data["m2_start"] if entry_data["m2_start"] else date(2024, 7, 1)
+        st.session_state.m2_end = entry_data["m2_end"] if entry_data["m2_end"] else date(2024, 12, 31)
         
-        if entry_data["m2_start"]:
-            st.session_state.m2_start = datetime.strptime(entry_data["m2_start"], "%Y-%m-%d").date()
-        else:
-            st.session_state.m2_start = date(2024, 7, 1)
-
-        if entry_data["m2_end"]:
-            st.session_state.m2_end = datetime.strptime(entry_data["m2_end"], "%Y-%m-%d").date()
-        else:
-            st.session_state.m2_end = date(2024, 12, 31)
-        
-        # Zahlenwerte übernehmen (oder None lassen, wenn sie 0 waren)
-        # Wir wandeln 0.0 wieder in echte Zahlen um, damit die Berechnung läuft
-        st.session_state.grundsteuer = float(entry_data["grundsteuer"]) if entry_data["grundsteuer"] is not None else None
-        st.session_state.umlage = float(entry_data["umlage"]) if entry_data["umlage"] is not None else None
-        
+        st.session_state.grundsteuer = entry_data["grundsteuer"]
+        st.session_state.umlage = entry_data["umlage"]
         st.session_state.heiz_in_umlage = entry_data["heiz_in_umlage"]
         st.session_state.heiz_periods = entry_data["heiz_periods"]
-        
-        st.session_state.h1 = float(entry_data["h1"]) if entry_data["h1"] is not None else None
-        st.session_state.h2 = float(entry_data["h2"]) if entry_data["h2"] is not None else None
-        st.session_state.h3 = float(entry_data["h3"]) if entry_data["h3"] is not None else None
-        
+        st.session_state.h1 = entry_data["h1"]
+        st.session_state.h2 = entry_data["h2"]
+        st.session_state.h3 = entry_data["h3"]
         st.session_state.match_periods = entry_data["match_periods"]
         
-        # Trigger setzen
         st.session_state.calc_triggered = True
-        
     except Exception as e:
-        st.error(f"Fehler beim Laden der Daten: {e}")
+        st.error(f"Fehler beim Laden: {e}")
 
 # Initialisierung
 init_state()
@@ -145,8 +114,7 @@ if st.session_state.has_m2:
 
 st.markdown("---")
 
-# --- 2. KOSTENBASIS (Felder jetzt standardmäßig LEER) ---
-# value=None sorgt dafür, dass das Feld leer ist. 
+# --- 2. KOSTENBASIS ---
 c_grund, c_umlage = st.columns(2)
 with c_grund:
     st.number_input("Grundsteuer (€)", key="grundsteuer", min_value=0.0, step=0.01, format="%.2f", value=None, placeholder="0,00")
@@ -172,7 +140,7 @@ st.radio(
     key="heiz_periods"
 )
 
-# Dynamische Eingabefelder Heizung (Auch leer)
+# Dynamische Eingabefelder Heizung
 if st.session_state.heiz_periods == "1 Zeitraum (Nicht aufgeteilt)":
     st.number_input("Heizkosten (€)", key="h1", min_value=0.0, step=0.01, format="%.2f", value=None, placeholder="0,00")
 elif st.session_state.heiz_periods == "2 Zeiträume":
@@ -185,7 +153,7 @@ else:
     with hc2: st.number_input("Heizkosten zweiter Zeitraum (€)", key="h2", min_value=0.0, step=0.01, format="%.2f", value=None, placeholder="0,00")
     with hc3: st.number_input("Heizkosten dritter Zeitraum (€)", key="h3", min_value=0.0, step=0.01, format="%.2f", value=None, placeholder="0,00")
 
-# Summenberechnung (Wir müssen None als 0.0 behandeln für die Mathe)
+# Summenberechnung
 val_h1 = st.session_state.h1 if st.session_state.h1 is not None else 0.0
 val_h2 = st.session_state.h2 if st.session_state.h2 is not None else 0.0
 val_h3 = st.session_state.h3 if st.session_state.h3 is not None else 0.0
@@ -208,6 +176,7 @@ st.radio(
 # --- BERECHNUNGS-LOGIK ---
 
 def perform_calculation():
+    # Wir speichern die Daten jetzt direkt im Session State (RAM), nicht als Datei
     save_data = {
         "m1_start": st.session_state.m1_start,
         "m1_end": st.session_state.m1_end,
@@ -233,11 +202,9 @@ st.button("Berechnung starten", type="primary", on_click=perform_calculation)
 if st.session_state.calc_triggered:
     st.markdown("### 3. Ergebnisse")
     
-    # Werte holen (None -> 0.0)
     gs_val = st.session_state.grundsteuer if st.session_state.grundsteuer is not None else 0.0
     um_val = st.session_state.umlage if st.session_state.umlage is not None else 0.0
 
-    # Bereinigung Umlage
     basis_umlage = um_val
     if st.session_state.heiz_in_umlage == "Ja":
         basis_umlage = um_val - heiz_total_sum
@@ -245,7 +212,6 @@ if st.session_state.calc_triggered:
             st.error(f"⚠️ Heizkosten ({heiz_total_sum:.2f} €) > Umlagekosten ({um_val:.2f} €)!")
             basis_umlage = 0
 
-    # Mieter 1
     d1, hgz1 = calculate_stats(st.session_state.m1_start, st.session_state.m1_end)
     gs1 = (gs_val / DAYS_IN_YEAR) * d1
     uk1 = (basis_umlage / DAYS_IN_YEAR) * d1
@@ -266,7 +232,6 @@ if st.session_state.calc_triggered:
     c3.metric("Heizkosten", f"{hk1:.2f} €")
     c4.markdown(f"<small style='color:gray'>{note1}</small>", unsafe_allow_html=True)
 
-    # Mieter 2
     if st.session_state.has_m2:
         d2, hgz2 = calculate_stats(st.session_state.m2_start, st.session_state.m2_end)
         gs2 = (gs_val / DAYS_IN_YEAR) * d2
@@ -290,22 +255,24 @@ if st.session_state.calc_triggered:
 
 # --- VERWALTUNG ---
 st.markdown("---")
+st.markdown("### Verwaltung")
 
 col_reset, col_space = st.columns([1, 2])
 with col_reset:
     if st.button("🔄 Neue Berechnung (Reset)"):
+        # Reset löscht nur die Eingaben, behält aber den Verlauf
+        save_hist = st.session_state.history_list
         st.session_state.clear()
+        st.session_state.history_list = save_hist # Verlauf wiederherstellen
         st.rerun()
 
-with st.expander("📂 Letzte Berechnungen anzeigen"):
-    history_data = load_history()
-    if not history_data:
-        st.write("Noch keine Berechnungen gespeichert.")
+with st.expander("📂 Letzte Berechnungen anzeigen (Aktuelle Sitzung)"):
+    if not st.session_state.history_list:
+        st.write("Noch keine Berechnungen in dieser Sitzung.")
     else:
         st.write("Klicken Sie auf eine Berechnung, um sie wiederherzustellen:")
-        for idx, entry in enumerate(history_data):
+        for idx, entry in enumerate(st.session_state.history_list):
             ts = entry["meta_timestamp"]
-            # WICHTIG: Das Laden passiert jetzt vor dem erneuten Laden der Seite
             if st.button(f"Laden: {ts}", key=f"hist_{idx}"):
                 restore_from_history(entry["data"])
                 st.rerun()
